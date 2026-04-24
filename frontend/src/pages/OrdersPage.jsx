@@ -1,24 +1,36 @@
-// frontend/src/pages/OrdersPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import orderService from '../services/orderService';
 import { useAuth } from '../context/AuthContext';
 
 const OrdersPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
         loadOrders();
-    }, []);
+    }, [isAuthenticated, navigate]);
 
     const loadOrders = async () => {
+        setLoading(true);
+        setError('');
         try {
             const data = await orderService.getUserOrders();
-            setOrders(data);
+            // Ensure data is an array
+            const ordersArray = Array.isArray(data) ? data : data.orders || [];
+            setOrders(ordersArray);
+            console.log('Orders set:', ordersArray); // Debug log
         } catch (error) {
             console.error('Erreur chargement commandes:', error);
+            setError('Impossible de charger vos commandes. Veuillez réessayer plus tard.');
+            setOrders([]);
         } finally {
             setLoading(false);
         }
@@ -69,6 +81,14 @@ const OrdersPage = () => {
             textAlign: 'center',
             padding: '50px'
         },
+        error: {
+            color: '#dc3545',
+            padding: '10px',
+            backgroundColor: '#f8d7da',
+            borderRadius: '4px',
+            marginBottom: '20px',
+            textAlign: 'center'
+        },
         noOrders: {
             textAlign: 'center',
             padding: '50px',
@@ -92,7 +112,8 @@ const OrdersPage = () => {
         orderCard: {
             border: '1px solid #ddd',
             borderRadius: '8px',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            backgroundColor: '#fff'
         },
         orderHeader: {
             backgroundColor: '#f8f9fa',
@@ -100,7 +121,9 @@ const OrdersPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: '1px solid #ddd'
+            borderBottom: '1px solid #ddd',
+            flexWrap: 'wrap',
+            gap: '10px'
         },
         orderNumber: {
             fontSize: '1.1em',
@@ -127,11 +150,14 @@ const OrdersPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             padding: '10px 0',
-            borderBottom: '1px solid #eee'
+            borderBottom: '1px solid #eee',
+            flexWrap: 'wrap',
+            gap: '10px'
         },
         itemName: {
             textDecoration: 'none',
-            color: '#333'
+            color: '#333',
+            flex: '1'
         },
         itemQuantity: {
             color: '#666'
@@ -150,14 +176,18 @@ const OrdersPage = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderTop: '1px solid #ddd'
+            borderTop: '1px solid #ddd',
+            flexWrap: 'wrap',
+            gap: '10px'
         },
         viewButton: {
             padding: '8px 15px',
             backgroundColor: '#007bff',
             color: 'white',
             textDecoration: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            border: 'none',
+            cursor: 'pointer'
         },
         paymentStatus: {
             padding: '5px 10px',
@@ -168,7 +198,19 @@ const OrdersPage = () => {
     };
 
     if (loading) {
-        return <div style={styles.loading}>Chargement des commandes...</div>;
+        return <div style={styles.loading}>Chargement de vos commandes...</div>;
+    }
+
+    if (error) {
+        return (
+            <div style={styles.container}>
+                <h1 style={styles.title}>Mes commandes</h1>
+                <div style={styles.error}>{error}</div>
+                <button onClick={loadOrders} style={styles.viewButton}>
+                    Réessayer
+                </button>
+            </div>
+        );
     }
 
     if (!orders || orders.length === 0) {
@@ -192,10 +234,10 @@ const OrdersPage = () => {
             
             <div style={styles.ordersList}>
                 {orders.map(order => (
-                    <div key={order.id} style={styles.orderCard}>
+                    <div key={order.id || order._id} style={styles.orderCard}>
                         <div style={styles.orderHeader}>
                             <div>
-                                <span style={styles.orderNumber}>Commande #{order.id}</span>
+                                <span style={styles.orderNumber}>Commande #{order.id || order._id}</span>
                                 <span style={styles.orderDate}>
                                     {' '}- {new Date(order.createdAt).toLocaleDateString()}
                                 </span>
@@ -207,20 +249,20 @@ const OrdersPage = () => {
                         
                         <div style={styles.orderBody}>
                             <div style={styles.orderItems}>
-                                {order.items?.map(item => (
-                                    <div key={item.id} style={styles.orderItem}>
+                                {order.items && order.items.map((item, index) => (
+                                    <div key={item.id || index} style={styles.orderItem}>
                                         <Link to={`/products/${item.productId}`} style={styles.itemName}>
                                             {item.productName}
                                         </Link>
                                         <span>
-                                            {item.quantity} x {item.price.toFixed(2)} € = {item.total.toFixed(2)} €
+                                            {item.quantity} x {parseFloat(item.price).toFixed(2)} € = {parseFloat(item.total).toFixed(2)} €
                                         </span>
                                     </div>
                                 ))}
                             </div>
                             
                             <div style={styles.orderTotal}>
-                                Total: {order.total.toFixed(2)} €
+                                Total: {parseFloat(order.total).toFixed(2)} €
                             </div>
                         </div>
                         
@@ -233,7 +275,7 @@ const OrdersPage = () => {
                                     {order.paymentMethod}
                                 </span>
                             </div>
-                            <Link to={`/orders/${order.id}`} style={styles.viewButton}>
+                            <Link to={`/orders/${order.id || order._id}`} style={styles.viewButton}>
                                 Voir détails
                             </Link>
                         </div>

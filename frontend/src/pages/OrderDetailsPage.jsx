@@ -1,4 +1,3 @@
-// frontend/src/pages/OrderDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import orderService from '../services/orderService';
@@ -21,12 +20,16 @@ const OrderDetailPage = () => {
     }, [id]);
 
     const loadOrderDetails = async () => {
+        setLoading(true);
+        setError('');
         try {
             const data = await orderService.getById(id);
-            setOrder(data.order);
-            setInvoice(data.invoice);
-            setShipping(data.shipping);
+            console.log('Order details:', data); // Debug log
+            setOrder(data.order || data);
+            setInvoice(data.invoice || null);
+            setShipping(data.shipping || null);
         } catch (error) {
+            console.error('Error loading order:', error);
             setError('Impossible de charger les détails de la commande');
         } finally {
             setLoading(false);
@@ -40,6 +43,7 @@ const OrderDetailPage = () => {
                 await orderService.cancelOrder(id);
                 await loadOrderDetails();
             } catch (error) {
+                console.error('Error cancelling order:', error);
                 setError('Erreur lors de l\'annulation de la commande');
             } finally {
                 setCancelling(false);
@@ -100,7 +104,9 @@ const OrderDetailPage = () => {
             marginBottom: '20px',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '15px'
         },
         orderStatus: {
             padding: '8px 15px',
@@ -163,6 +169,15 @@ const OrderDetailPage = () => {
             cursor: 'pointer',
             marginTop: '20px'
         },
+        cancelButtonDisabled: {
+            padding: '10px 20px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'not-allowed',
+            marginTop: '20px'
+        },
         trackingInfo: {
             backgroundColor: '#e7f3ff',
             padding: '15px',
@@ -192,7 +207,7 @@ const OrderDetailPage = () => {
                 ← Retour aux commandes
             </button>
 
-            <h1 style={styles.title}>Commande #{order.id}</h1>
+            <h1 style={styles.title}>Commande #{order.id || order._id}</h1>
 
             <div style={styles.orderHeader}>
                 <div>
@@ -211,13 +226,11 @@ const OrderDetailPage = () => {
             </div>
 
             <div style={styles.grid}>
-                {/* Adresse de livraison */}
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>Adresse de livraison</h3>
-                    <p>{order.shippingAddress}</p>
+                    <p>{order.shippingAddress || 'Adresse non spécifiée'}</p>
                 </div>
 
-                {/* Informations de paiement */}
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>Paiement</h3>
                     <div style={styles.infoRow}>
@@ -229,7 +242,6 @@ const OrderDetailPage = () => {
                 </div>
             </div>
 
-            {/* Articles commandés */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>Articles commandés</h3>
                 <table style={styles.itemsTable}>
@@ -242,16 +254,16 @@ const OrderDetailPage = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {order.items?.map(item => (
-                            <tr key={item.id} style={styles.tableRow}>
+                        {order.items && order.items.map((item, index) => (
+                            <tr key={item.id || index} style={styles.tableRow}>
                                 <td style={styles.tableCell}>
                                     <Link to={`/products/${item.productId}`}>
                                         {item.productName}
                                     </Link>
                                 </td>
-                                <td style={styles.tableCell}>{item.price.toFixed(2)} €</td>
+                                <td style={styles.tableCell}>{parseFloat(item.price).toFixed(2)} €</td>
                                 <td style={styles.tableCell}>{item.quantity}</td>
-                                <td style={styles.tableCell}>{item.total.toFixed(2)} €</td>
+                                <td style={styles.tableCell}>{parseFloat(item.total).toFixed(2)} €</td>
                             </tr>
                         ))}
                         <tr style={styles.totalRow}>
@@ -259,14 +271,13 @@ const OrderDetailPage = () => {
                                 <strong>Total TTC</strong>
                             </td>
                             <td style={styles.tableCell}>
-                                <strong>{order.total.toFixed(2)} €</strong>
+                                <strong>{parseFloat(order.total).toFixed(2)} €</strong>
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            {/* Facture */}
             {invoice && (
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>Facture</h3>
@@ -277,20 +288,19 @@ const OrderDetailPage = () => {
                         <span style={styles.infoLabel}>Date:</span> {new Date(invoice.createdAt).toLocaleDateString()}
                     </div>
                     <div style={styles.infoRow}>
-                        <span style={styles.infoLabel}>Sous-total:</span> {invoice.subtotal.toFixed(2)} €
+                        <span style={styles.infoLabel}>Sous-total:</span> {parseFloat(invoice.subtotal).toFixed(2)} €
                     </div>
                     {invoice.discount > 0 && (
                         <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}>Réduction:</span> -{invoice.discount.toFixed(2)} €
+                            <span style={styles.infoLabel}>Réduction:</span> -{parseFloat(invoice.discount).toFixed(2)} €
                         </div>
                     )}
                     <div style={styles.infoRow}>
-                        <span style={styles.infoLabel}>Total:</span> <strong>{invoice.total.toFixed(2)} €</strong>
+                        <span style={styles.infoLabel}>Total:</span> <strong>{parseFloat(invoice.total).toFixed(2)} €</strong>
                     </div>
                 </div>
             )}
 
-            {/* Suivi de livraison */}
             {shipping && (
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>Suivi de livraison</h3>
@@ -318,12 +328,11 @@ const OrderDetailPage = () => {
                 </div>
             )}
 
-            {/* Bouton d'annulation (si commande en préparation) */}
             {order.status === 'En preparation' && (
                 <button 
                     onClick={handleCancelOrder}
                     disabled={cancelling}
-                    style={styles.cancelButton}
+                    style={cancelling ? styles.cancelButtonDisabled : styles.cancelButton}
                 >
                     {cancelling ? 'Annulation...' : 'Annuler la commande'}
                 </button>
