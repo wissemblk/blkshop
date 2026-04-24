@@ -6,7 +6,8 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "frontend/dist",
-        "buildCommand": "cd frontend && npm run build"
+        "buildCommand": "cd frontend && npm run build",
+        "outputDirectory": "frontend/dist"
       }
     },
     {
@@ -20,7 +21,11 @@
       "dest": "backend/api.js"
     },
     {
-      "src": "/",
+      "src": "/blkshop/(.*)",
+      "dest": "frontend/dist/$1"
+    },
+    {
+      "src": "/blkshop",
       "dest": "frontend/dist/index.html"
     },
     {
