@@ -1,17 +1,17 @@
 {
   "name": "ecommerce-backend",
-    "workspaces": [
+  "workspaces": [
     "frontend",
     "backend"
   ],
-    "version": "1.0.0",
+  "version": "1.0.0",
   "description": "E-commerce backend with MySQL",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:setup": "node scripts/seedData.js"
-    },
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -19,7 +19,7 @@
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.1",
-    "mysql2": "^3.6.0",
+    "mysql2": "^3.22.2",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
