@@ -1,4 +1,3 @@
-// backend/api.js or backend/index.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -21,7 +20,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', message: 'Backend is running' });
 });
 
 app.use((err, req, res, next) => {
@@ -29,5 +28,5 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Une erreur est survenue!' });
 });
 
-// Export directly for Vercel
+// Export for Vercel
 module.exports = app;
