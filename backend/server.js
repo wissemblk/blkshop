@@ -1,15 +1,13 @@
-// backend/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const pool = require('./config/database');
 
-// Import routes - assurez-vous que ces fichiers exportent bien des routers
+// Import routes
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-
 
 const app = express();
 
@@ -18,12 +16,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes - utilisez les routers importés
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
-
 
 // Route de test simple
 app.get('/', (req, res) => {
@@ -36,31 +33,29 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Une erreur est survenue!' });
 });
 
-const PORT = process.env.PORT || 5000;
+// Only use app.listen() when running locally (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    
+    const startServer = async () => {
+        try {
+            const connection = await pool.getConnection();
+            console.log('✅ Database connected successfully');
+            connection.release();
+            
+            app.listen(PORT, () => {
+                console.log(`🚀 Server running on port ${PORT}`);
+            });
+        } catch (error) {
+            console.error('❌ Database connection failed:', error.message);
+            app.listen(PORT, () => {
+                console.log(`🚀 Server running on port ${PORT} (without database)`);
+            });
+        }
+    };
+    
+    startServer();
+}
 
-// Test database connection
-const startServer = async () => {
-    try {
-        // Test database connection
-        const connection = await pool.getConnection();
-        console.log('✅ Database connected successfully');
-        connection.release();
-
-        // Start server
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
-            console.log(`📝 API available at http://localhost:${PORT}/api`);
-        });
-    } catch (error) {
-        console.error('❌ Database connection failed:', error.message);
-        console.log('⚠️  Starting server without database connection...');
-        
-        // Start server even if database fails (for testing)
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT} (without database)`);
-            console.log(`⚠️  Database connection failed: ${error.message}`);
-        });
-    }
-};
-
-startServer();
+// Export for Vercel (important!)
+module.exports = app;
