@@ -1,32 +1,51 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const pool = require('./config/database');
+const mysql = require('mysql2/promise')
 
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const cartRoutes = require('./routes/cartRoutes');
-const orderRoutes = require('./routes/orderRoutes');
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+})
 
-const app = express();
+module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  const url = new URL(req.url, `http://${req.headers.host}`)
+  const pathname = url.pathname
 
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
+  try {
+    // Products
+    if (req.method === 'GET' && pathname === '/api/products') {
+      const [rows] = await db.query('SELECT * FROM products')
+      return res.json(rows)
+    }
 
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Backend is running' });
-});
+    // Single product
+    if (req.method === 'GET' && pathname.startsWith('/api/products/')) {
+      const id = pathname.split('/').pop()
+      const [rows] = await db.query('SELECT * FROM products WHERE id = ?', [id])
+      return res.json(rows[0])
+    }
 
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Une erreur est survenue!' });
-});
+    // Users
+    if (req.method === 'GET' && pathname === '/api/users') {
+      const [rows] = await db.query('SELECT * FROM users')
+      return res.json(rows)
+    }
 
-// Export for Vercel
-module.exports = app;
+    // Orders
+    if (req.method === 'GET' && pathname === '/api/orders') {
+      const [rows] = await db.query('SELECT * FROM orders')
+      return res.json(rows)
+    }
+
+    res.status(404).json({ error: 'Route not found' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Database error', details: err.message })
+  }
+}
