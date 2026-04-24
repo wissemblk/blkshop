@@ -1,0 +1,10 @@
+{
+  "name": "blkshop",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "vercel-build": "npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
