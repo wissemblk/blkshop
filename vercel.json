@@ -6,26 +6,15 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "buildCommand": "cd frontend && npm install && npm run build"
+        "zeroConfig": true
       }
     },
     {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/server.js"
-    },
-    {
-      "src": "/static/(.*)",
-      "dest": "/frontend/dist/static/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "src": "backend/**",
+      "use": "@vercel/node",
+      "config": {
+        "zeroConfig": true
+      }
     }
   ]
 }

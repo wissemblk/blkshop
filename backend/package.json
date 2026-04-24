@@ -1,6 +1,9 @@
 {
   "name": "ecommerce-backend",
-    "homepage": "https://blk-shop.byethost7.com",
+    "workspaces": [
+    "frontend",
+    "backend"
+  ],
     "version": "1.0.0",
   "description": "E-commerce backend with MySQL",
   "main": "server.js",

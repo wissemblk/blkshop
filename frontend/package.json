@@ -1,6 +1,9 @@
 {
   "name": "frontend",
-  "homepage": "https://blk-shop.byethost7.com",
+    "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "private": true,
   "version": "0.0.0",
   "type": "module",
