@@ -12,12 +12,13 @@ const CartPage = () => {
         removeFromCart, 
         clearCart,
         getCartTotal,
-        getCartItemCount
+        getCartItemCount,
+        initialized
     } = useCart();
     
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
-    const [updating, setUpdating] = useState(false);
+    const [updatingItemId, setUpdatingItemId] = useState(null);
     const [error, setError] = useState('');
 
     const styles = {
@@ -31,58 +32,129 @@ const CartPage = () => {
         itemName: { fontSize: '1.2em', fontWeight: 'bold', color: '#333', textDecoration: 'none' },
         itemPrice: { color: '#007bff', fontWeight: 'bold', fontSize: '1.1em' },
         itemQuantity: { display: 'flex', alignItems: 'center', gap: '10px' },
-        quantityButton: { padding: '5px 10px', backgroundColor: '#f8f9fa', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' },
+        quantityButton: { 
+            padding: '5px 10px', 
+            backgroundColor: '#f8f9fa', 
+            border: '1px solid #ddd', 
+            borderRadius: '4px', 
+            cursor: 'pointer',
+            minWidth: '30px'
+        },
+        quantityButtonDisabled: {
+            opacity: 0.5,
+            cursor: 'not-allowed'
+        },
         quantityInput: { width: '50px', padding: '5px', textAlign: 'center', border: '1px solid #ddd', borderRadius: '4px' },
         itemTotal: { fontWeight: 'bold', fontSize: '1.1em' },
         itemActions: { display: 'flex', flexDirection: 'column', gap: '10px' },
-        removeButton: { padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+        removeButton: { 
+            padding: '5px 10px', 
+            backgroundColor: '#dc3545', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            cursor: 'pointer' 
+        },
         cartSummary: { backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', height: 'fit-content' },
         summaryTitle: { fontSize: '1.3em', marginBottom: '20px', color: '#333' },
         summaryRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #ddd' },
         summaryTotal: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '1.2em', fontWeight: 'bold' },
-        checkoutButton: { width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1.2em', cursor: 'pointer', marginBottom: '10px' },
-        clearCartButton: { width: '100%', padding: '10px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+        checkoutButton: { 
+            width: '100%', 
+            padding: '15px', 
+            backgroundColor: '#28a745', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            fontSize: '1.2em', 
+            cursor: 'pointer', 
+            marginBottom: '10px' 
+        },
+        checkoutButtonDisabled: {
+            backgroundColor: '#6c757d',
+            cursor: 'not-allowed'
+        },
+        clearCartButton: { 
+            width: '100%', 
+            padding: '10px', 
+            backgroundColor: '#6c757d', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            cursor: 'pointer' 
+        },
         error: { color: '#dc3545', padding: '10px', backgroundColor: '#f8d7da', borderRadius: '4px', marginBottom: '20px' },
         emptyCart: { textAlign: 'center', padding: '50px' },
         shopButton: { display: 'inline-block', padding: '12px 30px', backgroundColor: '#007bff', color: 'white', textDecoration: 'none', borderRadius: '4px', marginTop: '20px' },
         loading: { textAlign: 'center', padding: '50px' }
     };
 
+    // Redirect to login if not authenticated
     useEffect(() => {
-        if (!isAuthenticated()) {
+        if (!authLoading && !isAuthenticated()) {
             navigate('/login');
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, authLoading, navigate]);
 
-    // Fixed handlers - removed async/await since functions are synchronous
-    const handleQuantityChange = (productId, newQuantity) => {
+    // Debug logging
+    useEffect(() => {
+        console.log('🛒 CartPage Debug Info:', {
+            isAuthenticated: isAuthenticated(),
+            authLoading,
+            cartLoading: loading,
+            initialized,
+            cartItems: cart?.items,
+            itemsCount: cart?.items?.length,
+            totalItems: getCartItemCount(),
+            totalPrice: getCartTotal()
+        });
+    }, [cart, loading, initialized, isAuthenticated, authLoading, getCartItemCount, getCartTotal]);
+
+    const handleQuantityChange = async (productId, newQuantity) => {
         if (newQuantity < 1) return;
-        setUpdating(true);
-        updateCartItem(productId, newQuantity);
-        setTimeout(() => setUpdating(false), 100); // Small delay for UI feedback
+        setUpdatingItemId(productId);
+        try {
+            await updateCartItem(productId, newQuantity);
+        } catch (err) {
+            setError('Failed to update quantity');
+        } finally {
+            setUpdatingItemId(null);
+        }
     };
 
-    const handleRemoveItem = (productId) => {
+    const handleRemoveItem = async (productId) => {
         if (window.confirm('Voulez-vous vraiment retirer cet article ?')) {
-            setUpdating(true);
-            removeFromCart(productId);
-            setTimeout(() => setUpdating(false), 100);
+            setUpdatingItemId(productId);
+            try {
+                await removeFromCart(productId);
+            } catch (err) {
+                setError('Failed to remove item');
+            } finally {
+                setUpdatingItemId(null);
+            }
         }
     };
 
-    const handleClearCart = () => {
+    const handleClearCart = async () => {
         if (window.confirm('Vider le panier ?')) {
-            setUpdating(true);
-            clearCart();
-            setTimeout(() => setUpdating(false), 100);
+            try {
+                await clearCart();
+            } catch (err) {
+                setError('Failed to clear cart');
+            }
         }
     };
 
-    if (loading || updating) {
-        return <div style={styles.loading}><h2>Chargement du panier...</h2></div>;
+    // Show loading states
+    if (authLoading || (loading && !initialized)) {
+        return (
+            <div style={styles.loading}>
+                <h2>Chargement du panier...</h2>
+            </div>
+        );
     }
 
-    // Check if cart is empty - cart.items exists because we structured it that way
+    // Check if cart is empty
     if (!cart || !cart.items || cart.items.length === 0) {
         return (
             <div style={styles.emptyCart}>
@@ -117,21 +189,29 @@ const CartPage = () => {
                                     {item.name}
                                 </Link>
                                 <div style={styles.itemPrice}>
-                                    {item.price.toFixed(2)} €
+                                    {typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(item.price).toFixed(2)} €
                                 </div>
                                 <div style={styles.itemQuantity}>
                                     <button 
                                         onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
-                                        style={styles.quantityButton}
-                                        disabled={updating}
+                                        style={{
+                                            ...styles.quantityButton,
+                                            ...(updatingItemId === item.productId ? styles.quantityButtonDisabled : {})
+                                        }}
+                                        disabled={updatingItemId === item.productId}
                                     >
                                         -
                                     </button>
-                                    <span style={{ minWidth: '30px', textAlign: 'center' }}>{item.quantity}</span>
+                                    <span style={{ minWidth: '30px', textAlign: 'center' }}>
+                                        {item.quantity}
+                                    </span>
                                     <button 
                                         onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
-                                        style={styles.quantityButton}
-                                        disabled={updating}
+                                        style={{
+                                            ...styles.quantityButton,
+                                            ...(updatingItemId === item.productId ? styles.quantityButtonDisabled : {})
+                                        }}
+                                        disabled={updatingItemId === item.productId}
                                     >
                                         +
                                     </button>
@@ -144,7 +224,7 @@ const CartPage = () => {
                                 <button 
                                     onClick={() => handleRemoveItem(item.productId)}
                                     style={styles.removeButton}
-                                    disabled={updating}
+                                    disabled={updatingItemId === item.productId}
                                 >
                                     Supprimer
                                 </button>
@@ -169,15 +249,18 @@ const CartPage = () => {
                     </div>
                     <button 
                         onClick={() => navigate('/checkout')}
-                        style={styles.checkoutButton}
-                        disabled={updating}
+                        style={{
+                            ...styles.checkoutButton,
+                            ...(loading ? styles.checkoutButtonDisabled : {})
+                        }}
+                        disabled={loading}
                     >
                         Procéder au paiement
                     </button>
                     <button 
                         onClick={handleClearCart}
                         style={styles.clearCartButton}
-                        disabled={updating}
+                        disabled={loading}
                     >
                         Vider le panier
                     </button>

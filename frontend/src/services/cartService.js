@@ -4,61 +4,65 @@ import api from './api';
 class CartService {
     async getCart() {
         try {
-            console.log('🔍 Récupération du panier...');
+            console.log('🔍 Fetching cart...');
             const response = await api.get('/cart');
-            console.log('✅ Panier reçu:', response.data);
-            return response.data;
+            console.log('✅ Cart fetched:', response.data);
+            
+            // Normalize response structure
+            if (response.data) {
+                return response.data;
+            }
+            return { items: [], total: 0 };
         } catch (error) {
-            console.error('❌ Erreur getCart:', error);
+            console.error('❌ Error fetching cart:', error);
             throw error;
         }
     }
 
     async addItem(productId, quantity = 1) {
         try {
-            console.log('📤 Ajout au panier:', { productId, quantity });
+            console.log('📤 Adding item to cart:', { productId, quantity });
             const response = await api.post('/cart/items', { productId, quantity });
-            console.log('✅ Réponse reçue:', response.data);
-            
-            // Vérifier la structure de la réponse
-            if (response.data && response.data.cart) {
-                return response.data;
-            } else {
-                console.error('❌ Structure de réponse inattendue:', response.data);
-                return { cart: { items: [], total: 0 } };
-            }
+            console.log('✅ Item added:', response.data);
+            return response.data;
         } catch (error) {
-            console.error('❌ Erreur addItem:', error);
+            console.error('❌ Error adding item:', error);
             throw error;
         }
     }
 
     async updateItem(productId, quantity) {
         try {
+            console.log('🔄 Updating cart item:', { productId, quantity });
             const response = await api.put('/cart/items', { productId, quantity });
+            console.log('✅ Item updated:', response.data);
             return response.data;
         } catch (error) {
-            console.error('❌ Erreur updateItem:', error);
+            console.error('❌ Error updating item:', error);
             throw error;
         }
     }
 
     async removeItem(productId) {
         try {
+            console.log('🗑️ Removing item from cart:', productId);
             const response = await api.delete(`/cart/items/${productId}`);
+            console.log('✅ Item removed:', response.data);
             return response.data;
         } catch (error) {
-            console.error('❌ Erreur removeItem:', error);
+            console.error('❌ Error removing item:', error);
             throw error;
         }
     }
 
     async clearCart() {
         try {
+            console.log('🧹 Clearing cart...');
             const response = await api.delete('/cart');
+            console.log('✅ Cart cleared:', response.data);
             return response.data;
         } catch (error) {
-            console.error('❌ Erreur clearCart:', error);
+            console.error('❌ Error clearing cart:', error);
             throw error;
         }
     }

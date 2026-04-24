@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import productService from '../services/productService';
-import cartService from '../services/cartService';
+import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
+    const { addToCart, loading: cartLoading } = useCart(); // Use CartContext
     
     const [productData, setProductData] = useState(null);
     const [quantity, setQuantity] = useState(1);
@@ -17,7 +18,6 @@ const ProductDetailPage = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // --- LES STYLES DOIVENT ÊTRE DÉFINIS ICI, APRÈS LES HOOKS MAIS AVANT LE RENDU ---
     const styles = {
         container: {
             maxWidth: '1200px',
@@ -135,7 +135,6 @@ const ProductDetailPage = () => {
             fontSize: '1.2em'
         }
     };
-    // --- FIN DE LA DÉFINITION DES STYLES ---
 
     useEffect(() => {
         loadProduct();
@@ -166,8 +165,11 @@ const ProductDetailPage = () => {
         }
     };
 
-    const addToCart = async () => {
+    const handleAddToCart = async () => {
+        // Check if user is authenticated
         if (!isAuthenticated()) {
+            // Save intended destination for after login
+            sessionStorage.setItem('redirectAfterLogin', `/product/${id}`);
             navigate('/login');
             return;
         }
@@ -177,19 +179,38 @@ const ProductDetailPage = () => {
         setSuccess('');
 
         try {
-            await cartService.addItem(productData.product.id, quantity);
-            setSuccess('Produit ajouté au panier !');
-            setTimeout(() => {
-                navigate('/cart');
-            }, 2000);
+            // Prepare product object for cart context
+            const productToAdd = {
+                _id: productData.product.id || productData.product._id,
+                id: productData.product.id || productData.product._id,
+                name: productData.product.name,
+                price: productData.product.price,
+                image: productData.product.image,
+                stock: productData.stock
+            };
+            
+            console.log('🛒 Adding to cart:', productToAdd, quantity);
+            
+            // Use CartContext's addToCart function
+            const success = await addToCart(productToAdd, quantity);
+            
+            if (success) {
+                setSuccess('Produit ajouté au panier !');
+                setTimeout(() => {
+                    navigate('/cart');
+                }, 2000);
+            } else {
+                setError('Erreur lors de l\'ajout au panier');
+            }
         } catch (error) {
-            setError(error.response?.data?.error || 'Erreur lors de l\'ajout au panier');
+            console.error('❌ Error adding to cart:', error);
+            setError(error.response?.data?.error || error.message || 'Erreur lors de l\'ajout au panier');
         } finally {
             setAddingToCart(false);
         }
     };
 
-    // Rendu conditionnel (doit être APRÈS la définition des styles)
+    // Rendu conditionnel
     if (loading) {
         return <div style={styles.loading}>Chargement du produit...</div>;
     }
@@ -231,6 +252,9 @@ const ProductDetailPage = () => {
                         src={product.image || 'https://via.placeholder.com/500'} 
                         alt={product.name}
                         style={styles.productImage}
+                        onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/500';
+                        }}
                     />
                 </div>
 
@@ -274,11 +298,11 @@ const ProductDetailPage = () => {
                             {success && <div style={styles.success}>{success}</div>}
 
                             <button
-                                onClick={addToCart}
-                                disabled={addingToCart}
+                                onClick={handleAddToCart}
+                                disabled={addingToCart || cartLoading}
                                 style={{
                                     ...styles.addToCartButton,
-                                    ...(addingToCart && styles.addToCartButtonDisabled)
+                                    ...((addingToCart || cartLoading) && styles.addToCartButtonDisabled)
                                 }}
                             >
                                 {addingToCart ? 'Ajout en cours...' : 'Ajouter au panier'}
